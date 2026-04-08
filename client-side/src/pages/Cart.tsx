@@ -18,7 +18,7 @@ const Cart = () => {
   const grandTotal = totalPrice + serviceFee;
 
   const orderItem = {
-    id: tableId + Date.now(),
+    id: `${tableId}-${Date.now().toString()}`,
     product: items.map(item => {
       return {
         name: item.name,
