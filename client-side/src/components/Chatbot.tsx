@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
+const API_SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000';
+
 interface Message {
   role: 'user' | 'assistant';
   content: string;
@@ -37,7 +39,7 @@ const Chatbot = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:3000/chat', {
+      const response = await fetch(`${API_SERVER_URL}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

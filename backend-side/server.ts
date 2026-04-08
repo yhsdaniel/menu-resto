@@ -6,6 +6,8 @@ import { generateToken } from './api/token.ts';
 
 dotenv.config();
 
+const PORT = process.env.PORT || 3000;
+
 const app = express();
 app.use(express.json());
 app.use(cors());
@@ -56,4 +58,4 @@ app.post('/chat', async (req: Request, res: Response): Promise<void> => {
 
 app.post('/api/token', generateToken)
 
-app.listen(3000, () => console.log('Server berjalan di port 3000'));
+app.listen(PORT, () => console.log(`Server berjalan di port ${PORT}`));

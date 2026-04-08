@@ -6,6 +6,8 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
+const API_SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000';
+
 const Cart = () => {
   const { tableId } = useParams();
   const navigate = useNavigate();
@@ -29,7 +31,7 @@ const Cart = () => {
   }
 
   const checkOut = async () => {
-    const response = await fetch('http://localhost:3000/api/token', {
+    const response = await fetch(`${API_SERVER_URL}/api/token`, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
