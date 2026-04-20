@@ -2,11 +2,6 @@
 
 RestoMenu is a digital restaurant menu project built around QR codes for each table. Customers can open a table-specific menu, add items to a cart, continue to checkout, and interact with an AI-powered chat assistant. On the admin side, the project also includes a simple panel for viewing table QR codes and managing menu items.
 
-The repository is split into two apps:
-
-- `client-side`: customer and admin web interface
-- `backend-side`: Express API for Midtrans token generation and AI chat
-
 ## What This Project Does
 
 The current implementation includes:
@@ -24,10 +19,7 @@ The current implementation includes:
 
 ### Frontend
 
-- React 18
-- TypeScript
-- Vite
-- React Router
+- React
 - Tailwind CSS
 - shadcn/ui + Radix UI
 - TanStack Query
@@ -38,12 +30,9 @@ The current implementation includes:
 ### Backend
 
 - Node.js
-- Express 5
-- TypeScript
+- Expressjs
 - Midtrans Snap
 - Ollama
-- `dotenv`
-- `cors`
 
 ## Project Structure
 
@@ -69,26 +58,7 @@ cd backend-side
 npm install
 ```
 
-### 2. Configure environment variables
-
-Create a `.env` file inside `backend-side`:
-
-```env
-PORT=3000
-MIDTRANS_CLIENT_KEY=your_midtrans_client_key
-MIDTRANS_SERVER_KEY=your_midtrans_server_key
-OLLAMA_URL=http://localhost:11434
-```
-
-Create a `.env` file inside `client-side`:
-
-```env
-VITE_SERVER_URL=http://localhost:3000
-VITE_MIDTRANS_CLIENT_KEY=your_midtrans_client_key
-VITE_PUBLIC_URL=http://localhost:8080
-```
-
-### 3. Start the backend
+### 2. Start the backend
 
 ```bash
 cd backend-side
@@ -97,7 +67,7 @@ npm run dev
 
 The backend runs on `http://localhost:3000` by default.
 
-### 4. Start the frontend
+### 3. Start the frontend
 
 ```bash
 cd client-side
