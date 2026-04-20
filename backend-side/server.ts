@@ -1,8 +1,8 @@
 import express, { type Request, type Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { generateToken } from './api/token.ts';
-import { AIChat } from './api/ai-chat.ts';
+import { generateToken } from './api/token.js';
+import { AIChat } from './api/ai-chat.js';
 
 dotenv.config();
 
