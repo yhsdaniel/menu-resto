@@ -1,4 +1,4 @@
-import { categories, Category } from '@/data/menuData';
+import { categories } from '@/data/menuData';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
@@ -10,21 +10,21 @@ type Props = {
 };
 
 const CategoryFilter = ({ activeTab, setActiveTab, activeCategory, setActiveCategory }: Props) => {
-  const filtered = categories.filter(c => c.id === 'all' || c.type === activeTab);
+  const filtered = categories.filter(category => category.id === 'all' || category.type === activeTab);
 
   return (
     <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-md pb-3 pt-2">
-      {/* Food / Drink toggle */}
       <div className="flex gap-2 px-4 mb-3">
         {(['food', 'drink'] as const).map(tab => (
           <button
             key={tab}
-            onClick={() => { setActiveTab(tab); setActiveCategory('all'); }}
+            onClick={() => {
+              setActiveTab(tab);
+              setActiveCategory('all');
+            }}
             className={cn(
               'relative flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors',
-              activeTab === tab
-                ? 'text-primary-foreground'
-                : 'text-muted-foreground bg-secondary'
+              activeTab === tab ? 'text-primary-foreground' : 'text-muted-foreground bg-secondary'
             )}
           >
             {activeTab === tab && (
@@ -41,21 +41,20 @@ const CategoryFilter = ({ activeTab, setActiveTab, activeCategory, setActiveCate
         ))}
       </div>
 
-      {/* Category pills */}
       <div className="flex gap-2 px-4 overflow-x-auto scrollbar-hide">
-        {filtered.map(cat => (
+        {filtered.map(category => (
           <button
-            key={cat.id}
-            onClick={() => setActiveCategory(cat.id)}
+            key={category.id}
+            onClick={() => setActiveCategory(category.id)}
             className={cn(
               'flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all',
-              activeCategory === cat.id
+              activeCategory === category.id
                 ? 'bg-primary text-primary-foreground shadow-md'
                 : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
             )}
           >
-            <span>{cat.icon}</span>
-            {cat.name}
+            <span>{category.icon}</span>
+            {category.name}
           </button>
         ))}
       </div>

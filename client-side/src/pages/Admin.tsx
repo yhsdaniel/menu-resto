@@ -1,50 +1,116 @@
-import { useState } from 'react';
-import { tables, menuItems as initialMenuItems, categories, formatRupiah, MenuItem } from '@/data/menuData';
+import { useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
-import { QrCode, UtensilsCrossed, Table2, Plus, Pencil, Trash2, X } from 'lucide-react';
+import { Pencil, Plus, Table2, Trash2, UtensilsCrossed } from 'lucide-react';
+import { toast } from 'sonner';
+import { categories, formatRupiah, tables, type MenuItem } from '@/data/menuData';
 import { ModalAddEdit, ModalDelete } from '@/components/menu/Modal';
+import { createMenu, deleteMenu, fetchMenus, mapMenuToClient, updateMenu } from '@/lib/api';
 
 type Tab = 'tables' | 'menu';
 
-const Admin = () => {
-  const [activeTab, setActiveTab] = useState<Tab>('tables');
-  const [menus, setMenus] = useState<MenuItem[]>(initialMenuItems);
+type MenuFormState = {
+  name: string;
+  description: string;
+  price: number;
+  image: string;
+  categoryId: string;
+  isAvailable: boolean;
+  isPopular: boolean;
+};
 
-  // Modal states
+const defaultFormState: MenuFormState = {
+  name: '',
+  description: '',
+  price: 0,
+  image: '',
+  categoryId: categories.find(category => category.id !== 'all')?.id || 'main-course',
+  isAvailable: true,
+  isPopular: false,
+};
+
+const Admin = () => {
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<Tab>('tables');
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingMenu, setEditingMenu] = useState<MenuItem | null>(null);
+  const [formData, setFormData] = useState<MenuFormState>(defaultFormState);
 
-  // Form state
-  const [formData, setFormData] = useState<Partial<MenuItem>>({
-    name: '',
-    description: '',
-    price: 0,
-    image: '',
-    categoryId: categories[0]?.id || '',
-    isAvailable: true,
-    isPopular: false,
+  const { data: menuResponse = [], isLoading, isError, error } = useQuery({
+    queryKey: ['menus'],
+    queryFn: fetchMenus,
+  });
+
+  const menus = useMemo(() => menuResponse.map(mapMenuToClient), [menuResponse]);
+  const menuCategories = useMemo(
+    () => categories.filter(category => category.id !== 'all'),
+    [],
+  );
+
+  const invalidateMenus = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['menus'] });
+  };
+
+  const createMenuMutation = useMutation({
+    mutationFn: createMenu,
+    onSuccess: async () => {
+      await invalidateMenus();
+      setIsMenuModalOpen(false);
+      setFormData(defaultFormState);
+      toast.success('Menu berhasil ditambahkan.');
+    },
+    onError: (mutationError) => {
+      toast.error(mutationError instanceof Error ? mutationError.message : 'Gagal menambahkan menu.');
+    },
+  });
+
+  const updateMenuMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: Parameters<typeof updateMenu>[1] }) =>
+      updateMenu(id, payload),
+    onSuccess: async () => {
+      await invalidateMenus();
+      setIsMenuModalOpen(false);
+      setEditingMenu(null);
+      toast.success('Menu berhasil diperbarui.');
+    },
+    onError: (mutationError) => {
+      toast.error(mutationError instanceof Error ? mutationError.message : 'Gagal memperbarui menu.');
+    },
+  });
+
+  const deleteMenuMutation = useMutation({
+    mutationFn: deleteMenu,
+    onSuccess: async () => {
+      await invalidateMenus();
+      setIsDeleteModalOpen(false);
+      setEditingMenu(null);
+      toast.success('Menu berhasil dihapus.');
+    },
+    onError: (mutationError) => {
+      toast.error(mutationError instanceof Error ? mutationError.message : 'Gagal menghapus menu.');
+    },
   });
 
   const baseUrl = window.location.origin || import.meta.env.VITE_PUBLIC_URL;
 
   const handleOpenAddModal = () => {
     setEditingMenu(null);
-    setFormData({
-      name: '',
-      description: '',
-      price: 0,
-      image: '',
-      categoryId: categories[0]?.id || '',
-      isAvailable: true,
-      isPopular: false,
-    });
+    setFormData(defaultFormState);
     setIsMenuModalOpen(true);
   };
 
   const handleOpenEditModal = (menu: MenuItem) => {
     setEditingMenu(menu);
-    setFormData(menu);
+    setFormData({
+      name: menu.name,
+      description: menu.description,
+      price: menu.price,
+      image: menu.image,
+      categoryId: menu.categoryId,
+      isAvailable: menu.isAvailable,
+      isPopular: Boolean(menu.isPopular),
+    });
     setIsMenuModalOpen(true);
   };
 
@@ -53,39 +119,45 @@ const Admin = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const handleSaveMenu = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveMenu = (event: React.FormEvent) => {
+    event.preventDefault();
+
+    const payload = {
+      name: formData.name,
+      description: formData.description,
+      price: formData.price,
+      imageUrl: formData.image,
+      categoryId: formData.categoryId,
+      isAvailable: formData.isAvailable,
+      isPopular: formData.isPopular,
+    };
+
     if (editingMenu) {
-      setMenus(menus.map(m => m.id === editingMenu.id ? { ...m, ...formData } as MenuItem : m));
-    } else {
-      const newMenu = {
-        ...formData,
-        id: Date.now().toString(),
-        isAvailable: formData.isAvailable ?? true,
-        isPopular: formData.isPopular ?? false,
-      } as MenuItem;
-      setMenus([...menus, newMenu]);
+      updateMenuMutation.mutate({ id: editingMenu.id, payload });
+      return;
     }
-    setIsMenuModalOpen(false);
+
+    createMenuMutation.mutate(payload);
   };
 
   const handleDeleteMenu = () => {
-    if (editingMenu) {
-      setMenus(menus.filter(m => m.id !== editingMenu.id));
+    if (!editingMenu) {
+      return;
     }
-    setIsDeleteModalOpen(false);
+
+    deleteMenuMutation.mutate(editingMenu.id);
   };
+
+  const isSaving = createMenuMutation.isPending || updateMenuMutation.isPending;
 
   return (
     <div className="min-h-screen bg-background relative">
       <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-foreground">Admin Panel</h1>
           <p className="text-sm text-muted-foreground">Kelola meja, menu, dan QR code</p>
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-2 mb-6">
           <button
             onClick={() => setActiveTab('tables')}
@@ -103,7 +175,6 @@ const Admin = () => {
           </button>
         </div>
 
-        {/* Tables & QR */}
         {activeTab === 'tables' && (
           <div>
             <div className="flex items-center justify-between mb-4">
@@ -131,7 +202,6 @@ const Admin = () => {
           </div>
         )}
 
-        {/* Menu Management */}
         {activeTab === 'menu' && (
           <div>
             <div className="flex items-center justify-between mb-4">
@@ -144,48 +214,61 @@ const Admin = () => {
               </button>
             </div>
 
-            <div className="space-y-3">
-              {menus.map(item => {
-                const cat = categories.find(c => c.id === item.categoryId);
-                return (
-                  <div key={item.id} className="bg-card rounded-2xl p-3 border border-border/50 flex gap-3 items-center">
-                    <img src={item.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop'} alt={item.name} className="w-14 h-14 rounded-xl object-cover" />
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-sm text-card-foreground truncate" style={{ fontFamily: 'DM Sans, sans-serif' }}>{item.name}</h3>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs text-muted-foreground">{cat?.icon} {cat?.name}</span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium ${item.isAvailable
-                          ? 'bg-accent/10 text-accent'
-                          : 'bg-destructive/10 text-destructive'
-                          }`}>
-                          {item.isAvailable ? 'Tersedia' : 'Habis'}
-                        </span>
+            {isLoading ? (
+              <div className="rounded-2xl border border-border/50 bg-card px-4 py-10 text-center text-sm text-muted-foreground">
+                Memuat daftar menu...
+              </div>
+            ) : isError ? (
+              <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-10 text-center text-sm text-destructive">
+                {error instanceof Error ? error.message : 'Gagal memuat menu.'}
+              </div>
+            ) : menus.length === 0 ? (
+              <div className="rounded-2xl border border-border/50 bg-card px-4 py-10 text-center text-sm text-muted-foreground">
+                Belum ada menu. Tambahkan menu pertama untuk mulai menerima pesanan.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {menus.map(item => {
+                  const category = categories.find(cat => cat.id === item.categoryId);
+                  return (
+                    <div key={item.id} className="bg-card rounded-2xl p-3 border border-border/50 flex gap-3 items-center">
+                      <img src={item.image} alt={item.name} className="w-14 h-14 rounded-xl object-cover" />
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-sm text-card-foreground truncate" style={{ fontFamily: 'DM Sans, sans-serif' }}>{item.name}</h3>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs text-muted-foreground">{category?.icon} {category?.name}</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium ${item.isAvailable
+                            ? 'bg-accent/10 text-accent'
+                            : 'bg-destructive/10 text-destructive'
+                            }`}>
+                            {item.isAvailable ? 'Tersedia' : 'Habis'}
+                          </span>
+                        </div>
+                        <p className="text-sm font-bold text-primary mt-1">{formatRupiah(item.price)}</p>
                       </div>
-                      <p className="text-sm font-bold text-primary mt-1">{formatRupiah(item.price)}</p>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => handleOpenEditModal(item)}
+                          className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleOpenDeleteModal(item)}
+                          className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center text-destructive hover:bg-destructive/20 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => handleOpenEditModal(item)}
-                        className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleOpenDeleteModal(item)}
-                        className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center text-destructive hover:bg-destructive/20 transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Menu Modal (Add/Edit) */}
       {isMenuModalOpen && (
         <ModalAddEdit
           isMenuModalOpen={isMenuModalOpen}
@@ -193,18 +276,19 @@ const Admin = () => {
           handleSaveMenu={handleSaveMenu}
           formData={formData}
           setFormData={setFormData}
-          categories={categories}
+          categories={menuCategories}
           editingMenu={editingMenu}
+          isSubmitting={isSaving}
         />
       )}
 
-      {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && (
         <ModalDelete
           isDeleteModalOpen={isDeleteModalOpen}
           setIsDeleteModalOpen={setIsDeleteModalOpen}
           handleDeleteMenu={handleDeleteMenu}
           editingMenu={editingMenu}
+          isDeleting={deleteMenuMutation.isPending}
         />
       )}
     </div>
@@ -212,4 +296,3 @@ const Admin = () => {
 };
 
 export default Admin;
-

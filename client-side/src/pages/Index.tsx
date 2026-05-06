@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { QrCode, UtensilsCrossed, Smartphone } from 'lucide-react';
+import { QrCode, UtensilsCrossed, Smartphone, Database } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const Index = () => {
@@ -29,27 +29,40 @@ const Index = () => {
       >
         <button
           onClick={() => navigate('/table/1')}
-          className="w-full flex items-center gap-4 bg-primary text-primary-foreground p-4 rounded-2xl shadow-lg"
+          className="w-full flex items-center gap-4 bg-card text-card-foreground p-4 rounded-2xl border border-border shadow-sm hover:bg-primary hover:text-primary-foreground transition-colors"
         >
-          <div className="w-12 h-12 rounded-xl bg-primary-foreground/20 flex items-center justify-center">
-            <Smartphone className="w-6 h-6" />
+          <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center hover:text-primary-foreground transition-colors">
+            <Smartphone className="w-6 h-6 text-muted-foreground" />
           </div>
           <div className="text-left">
             <p className="font-semibold">Demo Menu Pelanggan</p>
-            <p className="text-xs opacity-80">Lihat menu sebagai pelanggan (Meja 1)</p>
+            <p className="text-xs opacity-80 hover:opacity-100">Lihat menu sebagai pelanggan (Meja 1)</p>
           </div>
         </button>
 
         <button
           onClick={() => navigate('/admin')}
-          className="w-full flex items-center gap-4 bg-card text-card-foreground p-4 rounded-2xl border border-border shadow-sm"
+          className="w-full flex items-center gap-4 bg-card text-card-foreground p-4 rounded-2xl border border-border shadow-sm hover:bg-primary hover:text-primary-foreground transition-colors"
         >
-          <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center">
+          <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center hover:text-primary-foreground transition-colors">
             <QrCode className="w-6 h-6 text-muted-foreground" />
           </div>
           <div className="text-left">
             <p className="font-semibold" style={{ fontFamily: 'DM Sans, sans-serif' }}>Admin Panel</p>
-            <p className="text-xs text-muted-foreground">Kelola menu, meja & QR code</p>
+            <p className="text-xs opacity-80 hover:opacity-100">Kelola menu, meja & QR code</p>
+          </div>
+        </button>
+
+        <button
+          onClick={() => navigate('/cashier')}
+          className="w-full flex items-center gap-4 bg-card text-card-foreground p-4 rounded-2xl border border-border shadow-sm hover:bg-primary hover:text-primary-foreground transition-colors"
+        >
+          <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center hover:text-primary-foreground transition-colors">
+            <Database className="w-6 h-6 text-muted-foreground" />
+          </div>
+          <div className="text-left">
+            <p className="font-semibold" style={{ fontFamily: 'DM Sans, sans-serif' }}>POS Cashier</p>
+            <p className="text-xs opacity-80 hover:opacity-100">Kelola transaksi dan pembayaran</p>
           </div>
         </button>
       </motion.div>

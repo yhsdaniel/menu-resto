@@ -1,72 +1,144 @@
+import { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useCart } from '@/contexts/CartContext';
-import { formatRupiah, menuItems } from '@/data/menuData';
-import { ArrowLeft, Minus, Plus, Trash2, MessageSquare } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { ArrowLeft, MessageSquare, Minus, Plus, SendHorizonal, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { useCart } from '@/contexts/CartContext';
+import { formatRupiah } from '@/data/menuData';
+import { createOrder, createPayment, paymentOrder } from '@/lib/api';
 
-const API_SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000';
+type MidtransSnapWindow = Window & {
+  snap?: {
+    pay: (
+      token: string,
+      callbacks: {
+        onSuccess: () => void;
+        onError?: (result: unknown) => void;
+        onClose?: () => void;
+      }
+    ) => void;
+  };
+};
 
 const Cart = () => {
   const { tableId } = useParams();
   const navigate = useNavigate();
-  const { items, updateQuantity, removeItem, updateNotes, totalPrice, clearCart, totalItems } = useCart();
-  const [editingNotes, setEditingNotes] = useState<string | null>(null);
+  const {
+    items,
+    updateQuantity,
+    removeItem,
+    updateNotes,
+    totalPrice,
+    clearCart,
+    totalItems,
+    tableNumber,
+  } = useCart();
+  const [editingNotes, setEditingNotes] = useState<number | null>(null);
 
-  const serviceFee = Math.round(totalPrice * 0.1);
-  const grandTotal = totalPrice + serviceFee;
+  const payOrderMutation = useMutation({
+    mutationFn: createPayment,
+    onSuccess: (payment) => {
+      clearCart();
+      navigate(`/table/${tableId}/success`, {
+        state: {
+          orderId: payment.tableOrder.id,
+          tableNumber: payment.tableOrder.tableNumber,
+        },
+      });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Gagal menyelesaikan pembayaran.');
+    },
+  });
 
-  const orderItem = {
-    id: `${tableId}-${Date.now().toString()}`,
-    product: items.map(item => {
-      return {
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        priceTotal: item.price * item.quantity,
+  const submitOrderMutation = useMutation({
+    mutationFn: createOrder,
+    onSuccess: async (order) => {
+      try {
+        await loadMidtransSnap();
+
+        const response = await paymentOrder({
+          id: order.id,
+          product: items.map(item => ({
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+          })),
+          priceTotal: order.totalPrice,
+        });
+
+        const token = response.token || response.redirect_url;
+
+        if (!token) {
+          throw new Error('Token pembayaran tidak diterima dari server.');
+        }
+
+        const snap = (window as MidtransSnapWindow).snap;
+
+        if (!snap) {
+          throw new Error('Midtrans Snap belum tersedia.');
+        }
+
+        snap.pay(token, {
+          onSuccess: async () => {
+            await payOrderMutation.mutateAsync({
+              tableOrderId: order.id,
+              paymentMethod: 'card',
+              amount: order.totalPrice,
+              paidAmount: order.totalPrice,
+              changeAmount: 0,
+              status: 'paid',
+            });
+          },
+          onError: (result: unknown) => {
+            console.error('Midtrans error', result);
+            toast.error('Pembayaran gagal. Silakan coba lagi.');
+          },
+          onClose: () => {
+            toast('Pembayaran ditutup. Pesanan tersimpan sebagai pending.');
+          },
+        });
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Gagal memproses pembayaran.');
       }
-    }),
-    priceTotal: grandTotal,
-  }
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Gagal mengirim pesanan.');
+    },
+  });
 
-  const checkOut = async () => {
-    const response = await fetch(`${API_SERVER_URL}/api/token`, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(orderItem),
-    });
-    const data = await response.json();
-    window.snap.pay(data.token, {
-      onSuccess: () => {
-        clearCart()
-        navigate(`/table/${tableId}/success`)
-      },
-      onPending: () => {
-        toast.error('Pembayaran Gagal.')
-      },
-      onError: () => {
-        toast.error('Ada kesalahan. Hubungi Karyawan Kami')
-      },
-    })
-  }
-
-  useEffect(() => {
-    const snapScript = 'https://app.sandbox.midtrans.com/snap/snap.js'
-    const clientKey = import.meta.env.VITE_MIDTRANS_CLIENT_KEY
-    const script = document.createElement('script')
-    script.src = snapScript
-    script.async = true
-    script.setAttribute('data-client-key', clientKey)
-    document.body.appendChild(script)
-
-    return () => {
-      document.body.removeChild(script)
+  const loadMidtransSnap = async () => {
+    if ((window as MidtransSnapWindow).snap) {
+      return;
     }
-  }, [])
+
+    return new Promise<void>((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://app.sandbox.midtrans.com/snap/snap.js';
+      script.setAttribute('data-client-key', import.meta.env.VITE_MIDTRANS_CLIENT_KEY);
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('Gagal memuat Midtrans Snap.'));
+      document.body.appendChild(script);
+    });
+  };
+
+  const handleSubmitOrder = () => {
+    if (!tableNumber && !tableId) {
+      toast.error('Nomor meja tidak ditemukan.');
+      return;
+    }
+
+    submitOrderMutation.mutate({
+      tableNumber: tableNumber ?? Number(tableId),
+      status: 'pending',
+      items: items.map(item => ({
+        menuId: item.id,
+        quantity: item.quantity,
+        notes: item.notes,
+      })),
+    });
+  };
 
   if (items.length === 0) {
     return (
@@ -86,15 +158,16 @@ const Cart = () => {
 
   return (
     <div className="min-h-screen bg-background max-w-md mx-auto pb-32">
-      {/* Header */}
       <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-md px-4 py-4 flex items-center gap-3 border-b border-border">
         <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-xl bg-secondary flex items-center justify-center">
           <ArrowLeft className="w-4 h-4 text-foreground" />
         </button>
-        <h1 className="text-lg font-bold text-foreground" style={{ fontFamily: 'DM Sans, sans-serif' }}>Keranjang</h1>
+        <div>
+          <h1 className="text-lg font-bold text-foreground" style={{ fontFamily: 'DM Sans, sans-serif' }}>Keranjang</h1>
+          <p className="text-xs text-muted-foreground">Meja #{tableNumber ?? tableId}</p>
+        </div>
       </div>
 
-      {/* Items */}
       <div className="px-4 mt-4 space-y-3">
         {items.map(item => (
           <motion.div
@@ -147,7 +220,7 @@ const Cart = () => {
                   type="text"
                   placeholder="Contoh: tidak pedas, tanpa bawang..."
                   value={item.notes || ''}
-                  onChange={e => updateNotes(item.id, e.target.value)}
+                  onChange={event => updateNotes(item.id, event.target.value)}
                   className="w-full px-3 py-2 bg-secondary rounded-lg text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                 />
               </motion.div>
@@ -156,31 +229,30 @@ const Cart = () => {
         ))}
       </div>
 
-      {/* Summary */}
       <div className="px-4 mt-6">
         <div className="bg-card rounded-2xl p-4 border border-border/50 space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Subtotal</span>
-            <span className="text-foreground font-medium">{formatRupiah(totalPrice)}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Biaya layanan (5%)</span>
-            <span className="text-foreground font-medium">{formatRupiah(serviceFee)}</span>
+            <span className="text-muted-foreground">Jumlah item</span>
+            <span className="text-foreground font-medium">{totalItems} item</span>
           </div>
           <div className="border-t border-border pt-2 flex justify-between">
-            <span className="font-bold text-foreground">Total</span>
-            <span className="font-bold text-primary text-lg">{formatRupiah(grandTotal)}</span>
+            <span className="font-bold text-foreground">Total Tagihan</span>
+            <span className="font-bold text-primary text-lg">{formatRupiah(totalPrice)}</span>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Pesanan akan dikirim ke sistem kasir, lalu pembayaran diselesaikan di meja kasir.
+          </p>
         </div>
       </div>
 
-      {/* Checkout button */}
       <div className="fixed bottom-0 left-0 right-0 p-4 max-w-md mx-auto">
         <button
-          onClick={() => checkOut()}
-          className="w-full bg-primary text-primary-foreground py-4 rounded-2xl font-bold text-sm shadow-xl"
+          onClick={handleSubmitOrder}
+          disabled={submitOrderMutation.isPending || payOrderMutation.isPending}
+          className="w-full bg-primary text-primary-foreground py-4 rounded-2xl font-bold text-sm shadow-xl disabled:opacity-70 flex items-center justify-center gap-2"
         >
-          Bayar — {formatRupiah(grandTotal)}
+          <SendHorizonal className="w-4 h-4" />
+          {submitOrderMutation.isPending ? 'Mengirim pesanan...' : `Kirim Pesanan • ${formatRupiah(totalPrice)}`}
         </button>
       </div>
     </div>

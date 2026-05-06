@@ -1,7 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { menuItems, categories } from '@/data/menuData';
+import { useQuery } from '@tanstack/react-query';
+import { categories } from '@/data/menuData';
 import { useCart } from '@/contexts/CartContext';
+import { fetchMenus, mapMenuToClient } from '@/lib/api';
 import MenuHeader from '@/components/menu/MenuHeader';
 import CategoryFilter from '@/components/menu/CategoryFilter';
 import MenuCard from '@/components/menu/MenuCard';
@@ -16,28 +18,38 @@ const TableMenu = () => {
   const [activeCategory, setActiveCategory] = useState('all');
   const [search, setSearch] = useState('');
 
+  const { data: menuResponse = [], isLoading, isError, error } = useQuery({
+    queryKey: ['menus'],
+    queryFn: fetchMenus,
+  });
+
+  const menuItems = useMemo(() => menuResponse.map(mapMenuToClient), [menuResponse]);
+
   useEffect(() => {
     setTableNumber(tableNumber);
   }, [tableNumber, setTableNumber]);
 
   const filtered = useMemo(() => {
     return menuItems.filter(item => {
-      const cat = categories.find(c => c.id === item.categoryId);
-      if (!cat) return false;
-      const matchesTab = cat.type === activeTab;
-      const matchesCat = activeCategory === 'all' || item.categoryId === activeCategory;
-      const matchesSearch = !search || item.name.toLowerCase().includes(search.toLowerCase());
-      return matchesTab && matchesCat && matchesSearch;
-    });
-  }, [activeTab, activeCategory, search]);
+      const category = categories.find(cat => cat.id === item.categoryId);
+      if (!category) {
+        return false;
+      }
 
-  // Popular items for the current tab
+      const matchesTab = category.type === activeTab;
+      const matchesCategory = activeCategory === 'all' || item.categoryId === activeCategory;
+      const matchesSearch = !search || item.name.toLowerCase().includes(search.toLowerCase());
+
+      return matchesTab && matchesCategory && matchesSearch;
+    });
+  }, [activeTab, activeCategory, menuItems, search]);
+
   const popular = useMemo(() => {
     return menuItems.filter(item => {
-      const cat = categories.find(c => c.id === item.categoryId);
-      return cat?.type === activeTab && item.isPopular;
+      const category = categories.find(cat => cat.id === item.categoryId);
+      return category?.type === activeTab && item.isPopular;
     });
-  }, [activeTab]);
+  }, [activeTab, menuItems]);
 
   return (
     <div className="min-h-screen bg-background max-w-md mx-auto pb-24">
@@ -49,7 +61,6 @@ const TableMenu = () => {
         setActiveCategory={setActiveCategory}
       />
 
-      {/* Popular section */}
       {activeCategory === 'all' && !search && popular.length > 0 && (
         <div className="px-4 mb-4">
           <h2 className="text-base font-bold text-foreground mb-2">⭐ Populer</h2>
@@ -63,12 +74,20 @@ const TableMenu = () => {
         </div>
       )}
 
-      {/* Menu list */}
       <div className="px-4 space-y-3">
         <h2 className="text-base font-bold text-foreground">
-          {activeCategory === 'all' ? 'Semua Menu' : categories.find(c => c.id === activeCategory)?.name}
+          {activeCategory === 'all' ? 'Semua Menu' : categories.find(cat => cat.id === activeCategory)?.name}
         </h2>
-        {filtered.length === 0 ? (
+
+        {isLoading ? (
+          <div className="rounded-2xl border border-border/50 bg-card px-4 py-10 text-center text-sm text-muted-foreground">
+            Memuat menu restoran...
+          </div>
+        ) : isError ? (
+          <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-10 text-center text-sm text-destructive">
+            {error instanceof Error ? error.message : 'Gagal memuat menu.'}
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <p className="text-3xl mb-2">🍽️</p>
             <p className="text-sm">Menu tidak ditemukan</p>

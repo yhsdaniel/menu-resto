@@ -113,3 +113,34 @@
     display: none;
   }
 }
+
+.print-area {
+  display: none;
+}
+
+@media print {
+  body {
+    background: white;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+
+  .print-area {
+    display: block;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    background: white;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}

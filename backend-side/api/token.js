@@ -1,27 +1,15 @@
 import Midtrans from 'midtrans-client';
-import type { Request, Response } from 'express';
 import dotenv from 'dotenv';
 dotenv.config();
 
 const snap = new Midtrans.Snap({
     isProduction: false,
-    clientKey: process.env.MIDTRANS_CLIENT_KEY as string,
-    serverKey: process.env.MIDTRANS_SERVER_KEY as string,
+    clientKey: process.env.MIDTRANS_CLIENT_KEY,
+    serverKey: process.env.MIDTRANS_SERVER_KEY,
 });
 
-type ItemReqBody = {
-    id: string;
-    product: Array<{
-        name: string;
-        price: number;
-        quantity: number;
-        priceTotal: number;
-    }>;
-    priceTotal: number;
-}
-
-export const generateToken = async (req: Request, res: Response) => {
-    const { id, product, priceTotal } = req.body as ItemReqBody
+export const generateToken = async (req, res) => {
+    const { id, product, priceTotal } = req.body
 
     // Calculate actual sum of all items in the product array
     const itemsSum = product.reduce((acc, item) => acc + (item.price * item.quantity), 0);

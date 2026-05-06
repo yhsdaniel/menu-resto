@@ -1,4 +1,3 @@
-import type { Request, Response } from "express";
 import { Ollama } from 'ollama';
 import dotenv from 'dotenv';
 
@@ -19,7 +18,7 @@ const dataFAQ = `
         - Minuman: Es Kopi Susu, Americano, Matcha Latte, Es Teh Manis, Jus Alpukat, Jus Jeruk, Mango Smoothie, Es Teler.
 `;
 
-export const AIChat = async (req: Request, res: Response) => {
+export const AIChat = async (req, res) => {
     try {
         const userMessage = req.body?.message;
 

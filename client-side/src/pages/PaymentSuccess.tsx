@@ -1,10 +1,17 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+
+type SuccessState = {
+  orderId?: number;
+  tableNumber?: number;
+};
 
 const PaymentSuccess = () => {
   const { tableId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const state = (location.state ?? {}) as SuccessState;
 
   return (
     <div className="min-h-screen bg-background max-w-md mx-auto flex flex-col items-center justify-center px-6 text-center">
@@ -19,10 +26,16 @@ const PaymentSuccess = () => {
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-        <h1 className="text-2xl font-bold text-foreground mb-2">Pembayaran Berhasil!</h1>
-        <p className="text-sm text-muted-foreground mb-8">
-          Pesanan kamu sedang diproses.<br />Silakan tunggu di meja kamu ya! 🎉
+        <h1 className="text-2xl font-bold text-foreground mb-2">Pesanan Berhasil Dikirim!</h1>
+        <p className="text-sm text-muted-foreground mb-4">
+          Pesanan untuk meja #{state.tableNumber ?? tableId} sudah masuk ke sistem restoran.
+          Pembayaran akan dibantu oleh kasir saat pesanan diproses.
         </p>
+        {state.orderId ? (
+          <p className="text-sm font-semibold text-primary mb-8">Nomor pesanan: INV-{state.orderId}</p>
+        ) : (
+          <p className="text-sm font-semibold text-primary mb-8">Silakan tunggu konfirmasi dari kasir.</p>
+        )}
 
         <button
           onClick={() => navigate(`/table/${tableId}`)}

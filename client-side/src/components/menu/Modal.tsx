@@ -1,7 +1,35 @@
+import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import { Trash2, X } from 'lucide-react'
-import React from 'react'
+import type { Category, MenuItem } from '@/data/menuData'
 
-export function ModalAddEdit({ isMenuModalOpen, setIsMenuModalOpen, handleSaveMenu, formData, setFormData, categories, editingMenu }: any) {
+type MenuFormState = {
+    name: string
+    description: string
+    price: number
+    image: string
+    categoryId: string
+    isAvailable: boolean
+    isPopular: boolean
+}
+
+type ModalAddEditProps = {
+    setIsMenuModalOpen: Dispatch<SetStateAction<boolean>>
+    handleSaveMenu: (event: FormEvent) => void
+    formData: MenuFormState
+    setFormData: Dispatch<SetStateAction<MenuFormState>>
+    categories: Category[]
+    editingMenu: MenuItem | null
+    isSubmitting?: boolean
+}
+
+type ModalDeleteProps = {
+    setIsDeleteModalOpen: Dispatch<SetStateAction<boolean>>
+    handleDeleteMenu: () => void
+    editingMenu: MenuItem | null
+    isDeleting?: boolean
+}
+
+export function ModalAddEdit({ setIsMenuModalOpen, handleSaveMenu, formData, setFormData, categories, editingMenu, isSubmitting }: ModalAddEditProps) {
     return (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-card w-full max-w-md rounded-2xl border border-border/50 shadow-lg overflow-hidden flex flex-col max-h-[90vh]">
@@ -38,8 +66,8 @@ export function ModalAddEdit({ isMenuModalOpen, setIsMenuModalOpen, handleSaveMe
                                 onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
                                 className="w-full px-3 py-2 rounded-xl bg-background border border-border/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
                             >
-                                {categories.map(cat => (
-                                    <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
+                                {categories.map((category) => (
+                                    <option key={category.id} value={category.id}>{category.icon} {category.name}</option>
                                 ))}
                             </select>
                         </div>
@@ -60,6 +88,7 @@ export function ModalAddEdit({ isMenuModalOpen, setIsMenuModalOpen, handleSaveMe
                         <div className="space-y-1.5">
                             <label className="text-sm font-medium text-foreground">URL Gambar</label>
                             <input
+                                required
                                 type="text"
                                 value={formData.image || ''}
                                 onChange={(e) => setFormData({ ...formData, image: e.target.value })}
@@ -71,6 +100,7 @@ export function ModalAddEdit({ isMenuModalOpen, setIsMenuModalOpen, handleSaveMe
                         <div className="space-y-1.5">
                             <label className="text-sm font-medium text-foreground">Deskripsi</label>
                             <textarea
+                                required
                                 value={formData.description || ''}
                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                 rows={3}
@@ -105,17 +135,19 @@ export function ModalAddEdit({ isMenuModalOpen, setIsMenuModalOpen, handleSaveMe
                 <div className="p-4 border-t border-border/50 flex justify-end gap-2 bg-secondary/30">
                     <button
                         type="button"
+                        disabled={isSubmitting}
                         onClick={() => setIsMenuModalOpen(false)}
-                        className="px-4 py-2 rounded-xl text-sm font-semibold bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
+                        className="px-4 py-2 rounded-xl text-sm font-semibold bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors disabled:opacity-70"
                     >
                         Batal
                     </button>
                     <button
                         type="submit"
                         form="menu-form"
-                        className="px-4 py-2 rounded-xl text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                        disabled={isSubmitting}
+                        className="px-4 py-2 rounded-xl text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-70"
                     >
-                        Simpan
+                        {isSubmitting ? 'Menyimpan...' : 'Simpan'}
                     </button>
                 </div>
             </div>
@@ -123,8 +155,7 @@ export function ModalAddEdit({ isMenuModalOpen, setIsMenuModalOpen, handleSaveMe
     )
 }
 
-
-export function ModalDelete({ isDeleteModalOpen, setIsDeleteModalOpen, handleDeleteMenu, editingMenu }: any) {
+export function ModalDelete({ setIsDeleteModalOpen, handleDeleteMenu, editingMenu, isDeleting }: ModalDeleteProps) {
     return (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-card w-full max-w-sm rounded-2xl border border-border/50 shadow-lg overflow-hidden flex flex-col">
@@ -140,16 +171,18 @@ export function ModalDelete({ isDeleteModalOpen, setIsDeleteModalOpen, handleDel
 
                 <div className="p-4 flex gap-2 border-t border-border/50 bg-secondary/30">
                     <button
+                        disabled={isDeleting}
                         onClick={() => setIsDeleteModalOpen(false)}
-                        className="flex-1 px-4 py-2 rounded-xl text-sm font-semibold bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
+                        className="flex-1 px-4 py-2 rounded-xl text-sm font-semibold bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors disabled:opacity-70"
                     >
                         Batal
                     </button>
                     <button
+                        disabled={isDeleting}
                         onClick={handleDeleteMenu}
-                        className="flex-1 px-4 py-2 rounded-xl text-sm font-semibold bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
+                        className="flex-1 px-4 py-2 rounded-xl text-sm font-semibold bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors disabled:opacity-70"
                     >
-                        Hapus
+                        {isDeleting ? 'Menghapus...' : 'Hapus'}
                     </button>
                 </div>
             </div>

@@ -7,9 +7,9 @@ import { CartProvider } from "@/contexts/CartContext";
 import Index from "./pages/Index";
 import TableMenu from "./pages/TableMenu";
 import Cart from "./pages/Cart";
-import Payment from "./pages/Payment";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import Admin from "./pages/Admin";
+import Cashier from "./pages/Cashier";
 import NotFound from "./pages/NotFound";
 import Chatbot from "@/components/Chatbot";
 
@@ -27,9 +27,9 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/table/:tableId" element={<TableMenu />} />
             <Route path="/table/:tableId/cart" element={<Cart />} />
-            <Route path="/table/:tableId/payment" element={<Payment />} />
             <Route path="/table/:tableId/success" element={<PaymentSuccess />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/cashier" element={<Cashier />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

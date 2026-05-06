@@ -4,9 +4,9 @@ import { CartItem, MenuItem } from '@/data/menuData';
 type CartContextType = {
   items: CartItem[];
   addItem: (item: MenuItem) => void;
-  removeItem: (id: string) => void;
-  updateQuantity: (id: string, quantity: number) => void;
-  updateNotes: (id: string, notes: string) => void;
+  removeItem: (id: number) => void;
+  updateQuantity: (id: number, quantity: number) => void;
+  updateNotes: (id: number, notes: string) => void;
   clearCart: () => void;
   totalItems: number;
   totalPrice: number;
@@ -30,11 +30,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, []);
 
-  const removeItem = useCallback((id: string) => {
+  const removeItem = useCallback((id: number) => {
     setItems(prev => prev.filter(i => i.id !== id));
   }, []);
 
-  const updateQuantity = useCallback((id: string, quantity: number) => {
+  const updateQuantity = useCallback((id: number, quantity: number) => {
     if (quantity <= 0) {
       setItems(prev => prev.filter(i => i.id !== id));
     } else {
@@ -42,7 +42,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const updateNotes = useCallback((id: string, notes: string) => {
+  const updateNotes = useCallback((id: number, notes: string) => {
     setItems(prev => prev.map(i => i.id === id ? { ...i, notes } : i));
   }, []);
 

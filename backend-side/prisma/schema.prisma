@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Menu {
+  id              Int              @id @default(autoincrement())
+  name            String
+  description     String
+  price           Float
+  imageUrl        String
+  categoryId      String
+  isAvailable     Boolean          @default(true)
+  isPopular       Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  tableOrderMenus TableOrderMenu[]
+}
+
+model TableOrder {
+  id              Int              @id @default(autoincrement())
+  tableNumber     Int
+  totalPrice      Float
+  status          String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  payment         Payment?
+  tableOrderMenus TableOrderMenu[]
+
+  @@index([tableNumber])
+  @@index([status])
+}
+
+model TableOrderMenu {
+  id           Int        @id @default(autoincrement())
+  tableOrderId Int
+  menuId       Int
+  quantity     Int
+  notes        String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  menu         Menu       @relation(fields: [menuId], references: [id])
+  tableOrder   TableOrder @relation(fields: [tableOrderId], references: [id])
+
+  @@unique([tableOrderId, menuId])
+  @@index([tableOrderId])
+  @@index([menuId])
+}
+
+model Payment {
+  id            Int        @id @default(autoincrement())
+  tableOrderId  Int        @unique
+  amount        Float
+  paidAmount    Float      @default(0)
+  changeAmount  Float      @default(0)
+  status        String
+  paymentMethod String
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  tableOrder    TableOrder @relation(fields: [tableOrderId], references: [id])
+
+  @@index([paymentMethod])
+  @@index([status])
+}
