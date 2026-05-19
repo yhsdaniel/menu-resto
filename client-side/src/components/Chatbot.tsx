@@ -11,6 +11,11 @@ interface Message {
   content: string;
 }
 
+type ChatApiResponse = {
+  reply?: string;
+  error?: string;
+};
+
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
@@ -46,16 +51,30 @@ const Chatbot = () => {
         body: JSON.stringify({ message: userMessage }),
       });
 
-      const data = await response.json();
+      const contentType = response.headers.get('content-type') ?? '';
+      const data: ChatApiResponse | null = contentType.includes('application/json')
+        ? await response.json()
+        : null;
 
-      if (response.ok) {
-        setMessages((prev) => [...prev, { role: 'assistant', content: data.reply }]);
-      } else {
-        setMessages((prev) => [...prev, { role: 'assistant', content: 'Maaf, terjadi kesalahan pada server.' }]);
+      const assistantMessage = data?.reply || data?.error;
+
+      if (!response.ok) {
+        throw new Error(assistantMessage || 'Maaf, terjadi kesalahan pada server.');
       }
+
+      if (!assistantMessage) {
+        throw new Error('Server tidak mengirim balasan chat.');
+      }
+
+      setMessages((prev) => [...prev, { role: 'assistant', content: assistantMessage }]);
     } catch (error) {
       console.error('Error sending message:', error);
-      setMessages((prev) => [...prev, { role: 'assistant', content: 'Maaf, gagal terhubung ke server.' }]);
+
+      const message = error instanceof Error
+        ? error.message
+        : 'Maaf, gagal terhubung ke server.';
+
+      setMessages((prev) => [...prev, { role: 'assistant', content: message }]);
     } finally {
       setIsLoading(false);
     }

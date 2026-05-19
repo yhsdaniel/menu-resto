@@ -10,11 +10,12 @@ const PORT = process.env.PORT || 8000;
 
 const app = express();
 app.use(express.json());
-app.use(cors({
-    origin: 'https://menu-resto-client.vercel.app',
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    credentials: true
-}));
+// app.use(cors({
+//     origin: ['http://localhost:5173', 'https://menu-resto-client.vercel.app'],
+//     methods: ['GET', 'POST', 'PUT', 'DELETE'],
+//     credentials: true
+// }));
+app.use(cors())
 await prisma.$connect();
 
 app.get('/', (req, res) => {

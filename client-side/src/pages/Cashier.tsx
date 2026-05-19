@@ -19,10 +19,10 @@ const paymentOptions: Array<{
   description: string;
   icon: typeof Banknote;
 }> = [
-  { id: 'cash', label: 'Tunai', description: 'Hitung uang masuk dan kembalian', icon: Banknote },
-  { id: 'qris', label: 'QRIS', description: 'Pembayaran scan barcode', icon: QrCode },
-  { id: 'card', label: 'Kartu', description: 'Debit atau kredit di kasir', icon: CreditCard },
-];
+    { id: 'cash', label: 'Tunai', description: 'Hitung uang masuk dan kembalian', icon: Banknote },
+    { id: 'qris', label: 'QRIS', description: 'Pembayaran scan barcode', icon: QrCode },
+    { id: 'card', label: 'Kartu', description: 'Debit atau kredit di kasir', icon: CreditCard },
+  ];
 
 const formatDateTime = (value: string) =>
   new Intl.DateTimeFormat('id-ID', {
@@ -170,7 +170,7 @@ const Cashier = () => {
   return (
     <>
       <div className="min-h-screen bg-background no-print">
-        <div className="max-w-6xl mx-auto px-4 py-6">
+        <div className="max-w px-4 py-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between mb-6">
             <div>
               <h1 className="text-3xl font-bold text-foreground">POS Cashier</h1>

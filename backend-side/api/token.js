@@ -37,7 +37,7 @@ export const generateToken = async (req, res) => {
     const parameter = {
         item_details: item_details,
         transaction_details: {
-            order_id: id,
+            order_id: id + Date.now(),
             gross_amount: priceTotal,
         },
         credit_card: {
