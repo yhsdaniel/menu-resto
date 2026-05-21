@@ -1,14 +1,17 @@
-import { Ollama } from 'ollama';
 import dotenv from 'dotenv';
+import { GoogleGenerativeAI, GoogleGenerativeAIError } from '@google/generative-ai';
 
 dotenv.config();
 
-const OLLAMA_URL = process.env.OLLAMA_URL?.trim() || 'http://127.0.0.1:11434';
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL?.trim() || 'llama3.2:latest';
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY?.trim();
+const GOOGLE_GEMINI_MODEL = process.env.GOOGLE_GEMINI_MODEL?.trim() || 'gemini-3.5-flash';
 
-const ollama = new Ollama({
-    host: OLLAMA_URL,
-});
+if (!GOOGLE_API_KEY) {
+    throw new Error('Env var GOOGLE_API_KEY must be set to use Google Gemini integration.');
+}
+
+const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
+const geminiModel = genAI.getGenerativeModel({ model: GOOGLE_GEMINI_MODEL });
 
 const dataFAQ = `
     INFORMASI RESTORANKU:
@@ -29,19 +32,25 @@ const getReadableError = (error) => {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const lowerMessage = errorMessage.toLowerCase();
 
-    if (
-        lowerMessage.includes('fetch failed') ||
-        lowerMessage.includes('econnrefused') ||
-        lowerMessage.includes('connect')
-    ) {
-        return `Tidak bisa terhubung ke Ollama di ${OLLAMA_URL}. Pastikan aplikasi Ollama aktif dan host-nya benar.`;
+    if (lowerMessage.includes('unauthorized') || lowerMessage.includes('api key') || lowerMessage.includes('401')) {
+        return 'Kunci Google API tidak valid atau belum disetel. Periksa GOOGLE_API_KEY.';
     }
 
     if (lowerMessage.includes('model') && lowerMessage.includes('not found')) {
-        return `Model Ollama "${OLLAMA_MODEL}" belum tersedia. Silakan pull atau ganti model yang terpasang.`;
+        return `Model Gemini "${GOOGLE_GEMINI_MODEL}" tidak ditemukan. Periksa nama model di GOOGLE_GEMINI_MODEL atau gunakan model yang tersedia.`;
     }
 
-    return `Gagal memproses chat dengan model "${OLLAMA_MODEL}". ${errorMessage}`;
+    return `Gagal memproses chat dengan model "${GOOGLE_GEMINI_MODEL}". ${errorMessage}`;
+};
+
+const extractReply = (response) => {
+    const candidate = response?.response?.candidates?.[0];
+    const parts = candidate?.content?.parts ?? [];
+    return parts
+        .map((part) => typeof part?.text === 'string' ? part.text : '')
+        .filter(Boolean)
+        .join(' ')
+        .trim();
 };
 
 export const AIChat = async (req, res) => {
@@ -55,33 +64,25 @@ export const AIChat = async (req, res) => {
             });
         }
 
-        const response = await ollama.chat({
-            model: OLLAMA_MODEL,
-            messages: [
+        const response = await geminiModel.generateContent({
+            systemInstruction: SYSTEM_PROMPT,
+            contents: [
                 {
-                    role: "system",
-                    content: SYSTEM_PROMPT
+                    role: 'user',
+                    parts: [{ text: userMessage }],
                 },
-                {
-                    role: "user",
-                    content: userMessage
-                }
             ],
-            stream: false,
-            options: {
-                temperature: 0.7,
-            }
         });
 
-        const reply = response?.message?.content?.trim();
+        const reply = extractReply(response);
 
         if (!reply) {
-            throw new Error('Respons Ollama kosong.');
+            throw new Error('Respons Gemini kosong.');
         }
 
         return res.status(200).json({
             reply,
-            model: OLLAMA_MODEL
+            model: GOOGLE_GEMINI_MODEL
         });
     } catch (error) {
         console.error('--- ERROR AI CHAT ---');
